@@ -1,8 +1,9 @@
-# Mark entire frontend as generated — fully excluded from GitHub language stats
-projects/** linguist-generated=true
-projects/** linguist-detectable=false
-
 # MoonBit source files
 *.mbt linguist-language=MoonBit
 moon.mod linguist-language=MoonBit
 moon.pkg linguist-language=MoonBit
+
+# Shadcn auto-generated UI components (not our code)
+projects/src/components/ui/** linguist-generated=true
+
+# Stats: ~4000 lines MoonBit + core TS game logic
