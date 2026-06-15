@@ -1597,7 +1597,7 @@ export default function BattleArena() {
     setSelectedCardUid(null);
     setShowHint(false);
     resetTimer();
-    const enemyName = enemyState.name;
+    const enemyName = "嘶鸣游荡者"; // EntityState has no name field
 
     try {
       // 获取当前阶段配置
