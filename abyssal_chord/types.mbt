@@ -178,7 +178,7 @@ pub enum BattlePhase {
   EnemyTurn
   Victory_
   Defeat_
-} derive(Eq)
+} derive(Eq, Show)
 
 // ─── 战斗状态 ───
 pub struct BattleState {
