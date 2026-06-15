@@ -989,7 +989,7 @@ export default function BattleArena() {
     }
     
     // 战斗记录
-    const targetLabel = target === "player" ? "调音师" : (enemyName || "敌人");
+    const targetLabel = target === "player" ? "调音师" : "敌人";
     if (armorConsumed > 0 && trueDamage > 0) {
       addCombatLog(`${targetLabel} 护甲-${armorConsumed}(剩余${newArmor}) HP-${trueDamage}(剩余${newHp})`);
     } else if (armorConsumed > 0) {
@@ -1594,7 +1594,7 @@ export default function BattleArena() {
     setSelectedCardUid(null);
     setShowHint(false);
     resetTimer();
-    const enemyName = enemyName;
+    const enemyName = enemyState.name;
 
     try {
       // 获取当前阶段配置
