@@ -1,0 +1,10 @@
+# 核心引擎：MoonBit
+*.mbt linguist-language=MoonBit
+
+# 可视化前端 demo — 不计入语言统计
+projects/** linguist-vendored
+projects/** linguist-documentation
+
+# MoonBit 配置
+moon.mod linguist-language=MoonBit
+moon.pkg linguist-language=MoonBit
