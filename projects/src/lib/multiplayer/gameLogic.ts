@@ -1,5 +1,5 @@
 // 多人对战游戏逻辑 - 完全复⽤单人模式
-import { Card, zhongLvCards, INITIAL_HAND_CARDS } from '@/lib/cards';
+import { Card, zhongLvCards, xianYinCards, INITIAL_HAND_CARDS } from '@/lib/cards';
 import type { MultiplayerGameState, MultiplayerPlayer, ActionLog, Debuff } from './types';
 
 // 游戏常量
@@ -10,8 +10,9 @@ const MAX_HAND_SIZE = 6;
 
 // 创建初始玩家
 export function createMultiplayerPlayer(id: string, name: string): MultiplayerPlayer {
-  // 洗牌并抽取初始手牌
-  const shuffledDeck = [...zhongLvCards].sort(() => Math.random() - 0.5);
+  // 合并钟律+弦音牌库（多人无污染度，污染相关效果忽略）
+  const allCards = [...zhongLvCards, ...xianYinCards];
+  const shuffledDeck = [...allCards].sort(() => Math.random() - 0.5);
   const hand = shuffledDeck.slice(0, INITIAL_HAND_CARDS.length);
   const deck = shuffledDeck.slice(INITIAL_HAND_CARDS.length);
 
@@ -320,6 +321,124 @@ export function handlePlayCard(
           });
         }
       }
+      break;
+
+    // ═══ 弦音卡牌（多人无污染版）═══
+    // 谐波感知：抽2张牌（多人无污染效果）
+    case 'xy-basic-07':
+    case 'xy-basic-08':
+      for (let d = 0; d < 2 && player.hand.length < MAX_HAND_SIZE; d++) {
+        if (player.deck.length === 0) {
+          if (player.discard.length > 0) { player.deck = [...player.discard].sort(() => Math.random() - 0.5); player.discard = []; }
+          else { break; }
+        }
+        if (player.deck.length > 0) { player.hand.push(player.deck.shift()!); }
+      }
+      break;
+
+    // 音纹闪避：4护甲，已出攻击牌额外+3
+    case 'xy-basic-05':
+    case 'xy-basic-06':
+      player.armor += (player.turnState.cardsPlayed > 0 ? 7 : 4);
+      break;
+
+    // 高频切割：4伤害，有声爆额外+2
+    case 'xy-basic-01':
+    case 'xy-basic-02':
+    case 'xy-basic-03':
+    case 'xy-basic-04':
+      if (enemy) {
+        let dmg = 4 + player.permanentBonuses.damageBonus + player.turnState.nextAttackDamageBonus;
+        if (enemy.debuffs.find((d: Debuff) => d.type === 'SONIC_BOOM')) { dmg += 2; }
+        if (enemy.armor > 0) {
+          if (enemy.armor >= dmg) { enemy.armor -= dmg; dmg = 0; }
+          else { dmg -= enemy.armor; enemy.armor = 0; }
+        }
+        if (dmg > 0) { enemy.hp = Math.max(0, enemy.hp - dmg); }
+      }
+      break;
+
+    // 声纹连斩：3伤害，免费再打一次
+    case 'xy-assassin-01':
+      if (enemy) {
+        let dmg = 3 + player.permanentBonuses.damageBonus + player.turnState.nextAttackDamageBonus;
+        if (enemy.armor > 0) {
+          if (enemy.armor >= dmg) { enemy.armor -= dmg; dmg = 0; }
+          else { dmg -= enemy.armor; enemy.armor = 0; }
+        }
+        if (dmg > 0) { enemy.hp = Math.max(0, enemy.hp - dmg); }
+      }
+      player.turnState.freeSecondAttackAvailable = true;
+      break;
+
+    // 共振穿刺：7伤害+2声爆，有声爆时+3
+    case 'xy-assassin-02':
+      if (enemy) {
+        let dmg = 7 + player.permanentBonuses.damageBonus + player.turnState.nextAttackDamageBonus;
+        if (enemy.debuffs.find((d: Debuff) => d.type === 'SONIC_BOOM')) { dmg += 3; }
+        if (enemy.armor > 0) {
+          if (enemy.armor >= dmg) { enemy.armor -= dmg; dmg = 0; }
+          else { dmg -= enemy.armor; enemy.armor = 0; }
+        }
+        if (dmg > 0) { enemy.hp = Math.max(0, enemy.hp - dmg); }
+      }
+      if (enemy) {
+        const sb = enemy.debuffs.find((d: Debuff) => d.type === 'SONIC_BOOM');
+        if (sb) { sb.stacks += 2; } else { enemy.debuffs.push({ type: 'SONIC_BOOM', stacks: 2 }); }
+      }
+      break;
+
+    // 超频驱动：5 AOE，每有声爆+2
+    case 'xy-assassin-03':
+      if (enemy) {
+        let dmg = 5 + player.permanentBonuses.damageBonus + player.turnState.nextAttackDamageBonus;
+        if (enemy.debuffs.find((d: Debuff) => d.type === 'SONIC_BOOM')) { dmg += 2; }
+        if (enemy.armor > 0) {
+          if (enemy.armor >= dmg) { enemy.armor -= dmg; dmg = 0; }
+          else { dmg -= enemy.armor; enemy.armor = 0; }
+        }
+        if (dmg > 0) { enemy.hp = Math.max(0, enemy.hp - dmg); }
+      }
+      break;
+
+    // 次声潜行：3护甲，下次攻击+8
+    case 'xy-assassin-04':
+      player.armor += 3;
+      player.turnState.nextAttackDamageBonus += 8;
+      break;
+
+    // 回声标记：永久能力
+    case 'xy-echo-01':
+      player.permanentAbilities.push({ id: 'ECHO_MARK', cardId: card.id, name: card.name, effect: card.effect });
+      break;
+
+    // 相位镜像：复制手牌中第一张攻击牌
+    case 'xy-echo-02':
+      {
+        const atkCard = player.hand.find((c: Card) => c.type === 'attack');
+        if (atkCard && player.hand.length < MAX_HAND_SIZE) {
+          player.hand.push({ ...atkCard });
+        }
+      }
+      break;
+
+    // 残响追击：6伤害，打3张以上翻倍
+    case 'xy-echo-03':
+      if (enemy) {
+        let dmg = 6 + player.permanentBonuses.damageBonus + player.turnState.nextAttackDamageBonus;
+        if (player.turnState.cardsPlayed >= 3) { dmg *= 2; }
+        if (enemy.armor > 0) {
+          if (enemy.armor >= dmg) { enemy.armor -= dmg; dmg = 0; }
+          else { dmg -= enemy.armor; enemy.armor = 0; }
+        }
+        if (dmg > 0) { enemy.hp = Math.max(0, enemy.hp - dmg); }
+      }
+      break;
+
+    // 全频共振：永久能力
+    case 'xy-echo-04':
+      player.permanentAbilities.push({ id: 'FULL_SPECTRUM', cardId: card.id, name: card.name, effect: card.effect });
+      player.permanentBonuses.damageBonus += 2;
       break;
 
     default:
