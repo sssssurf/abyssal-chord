@@ -19,9 +19,6 @@ import {
   TrendingDown,
   Sparkles,
   Target,
-  MessageSquare,
-  Send,
-  Trash2,
 } from "lucide-react";
 import { Card, CardType, CardTarget, INITIAL_HAND_CARDS, zhongLvCards } from "@/lib/cards";
 import { getPollutionLevel, pollutionLevels } from "@/lib/game-data";
@@ -726,106 +723,24 @@ export default function BattleArena() {
   // 用于避免重复播放游戏结束音效
   const hasPlayedEndSoundRef = useRef(false);
 
-  // ========== AI裁判对话框状态 ==========
-  const [showAgentDialog, setShowAgentDialog] = useState(false);
-  const [agentMessages, setAgentMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
-  const [agentInput, setAgentInput] = useState('');
-  const [isAgentLoading, setIsAgentLoading] = useState(false);
-  const agentScrollRef = useRef<HTMLDivElement>(null);
-  const agentAbortRef = useRef<AbortController | null>(null);
+  // ========== 战斗记录面板状态 ==========
+  interface CombatLogEntry {
+    id: number;
+    type: 'card' | 'damage' | 'armor' | 'ability' | 'sonic' | 'pollution' | 'turn' | 'system';
+    text: string;
+    value?: number;
+    timestamp: number;
+  }
+  const [combatLog, setCombatLog] = useState<CombatLogEntry[]>([]);
+  const [showCombatLog, setShowCombatLog] = useState(false);
+  const combatLogRef = useRef<HTMLDivElement>(null);
 
-  // ========== AI裁判发送消息功能 ==========
-  const sendAgentMessage = async (text: string) => {
-    if (!text.trim() || isAgentLoading) return;
-
-    const userMessage = { role: 'user' as const, content: text.trim() };
-    const newMessages = [...agentMessages, userMessage];
-    setAgentMessages(newMessages);
-    setAgentInput('');
-    setIsAgentLoading(true);
-
-    const assistantMessage = { role: 'assistant' as const, content: '' };
-    setAgentMessages([...newMessages, assistantMessage]);
-
-    const abortController = new AbortController();
-    agentAbortRef.current = abortController;
-
-    try {
-      const chatHistory = newMessages.map(m => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-      }));
-
-      const response = await fetch('/api/agent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: chatHistory }),
-        signal: abortController.signal,
-      });
-
-      if (!response.ok) throw new Error('请求失败');
-
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('无法读取响应');
-
-      const decoder = new TextDecoder();
-      let accumulated = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') break;
-            try {
-              const parsed = JSON.parse(data);
-              if (parsed.content) {
-                accumulated += parsed.content;
-                setAgentMessages(prev => {
-                  const updated = [...prev];
-                  updated[updated.length - 1] = { role: 'assistant', content: accumulated };
-                  return updated;
-                });
-              }
-            } catch {
-              // skip non-JSON lines
-            }
-          }
-        }
-      }
-    } catch (error) {
-      if (error instanceof Error && error.name !== 'AbortError') {
-        setAgentMessages(prev => {
-          const updated = [...prev];
-          updated[updated.length - 1] = { role: 'assistant', content: '连接异常，请重新尝试。' };
-          return updated;
-        });
-      }
-    } finally {
-      setIsAgentLoading(false);
-      agentAbortRef.current = null;
-      setTimeout(() => {
-        agentScrollRef.current?.scrollTo({ top: agentScrollRef.current.scrollHeight, behavior: 'smooth' });
-      }, 100);
-    }
-  };
-
-  const clearAgentChat = () => {
-    if (agentAbortRef.current) agentAbortRef.current.abort();
-    setAgentMessages([]);
-    setIsAgentLoading(false);
-  };
-
-  const handleAgentKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendAgentMessage(agentInput);
-    }
+  const addCombatLog = (type: CombatLogEntry['type'], text: string, value?: number) => {
+    const entry: CombatLogEntry = { id: Date.now(), type, text, value, timestamp: Date.now() };
+    setCombatLog(prev => [entry, ...prev].slice(0, 100));
+    setTimeout(() => {
+      combatLogRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 50);
   };
 
   // 使用 useRef 来管理 uid 计数器，确保每次组件重新渲染时 uid 都是一致的
@@ -926,8 +841,7 @@ export default function BattleArena() {
   // 敌人动画状态：idle(待机), attack(攻击), defend(防御), buff(强化), hit(受击)
   const [enemyAnimationState, setEnemyAnimationState] = useState<"idle" | "attack" | "defend" | "buff" | "hit">("idle");
   
-  // AI裁判消息
-  const [dialogMessages, setDialogMessages] = useState<Array<{ id: number; text: string; isTyping: boolean }>>([]);
+  // 战斗记录系统（原AI裁判 → 技能/属性变化记录）
   
   // 倒计时状态
   const [timeLeft, setTimeLeft] = useState(30);
@@ -1006,23 +920,9 @@ export default function BattleArena() {
     setTimeLeft(30);
   };
 
-  // AI裁判消息辅助函数
-  const addJudgeMessage = (text: string, typing: boolean = false) => {
-    // 检查是否是重复消息
-    setDialogMessages(prev => {
-      const lastMessage = prev[prev.length - 1];
-      if (lastMessage && lastMessage.text === text) {
-        return prev; // 跳过重复消息
-      }
-      return [...prev, { id: Date.now(), text, isTyping: typing }];
-    });
-    if (typing) {
-      setTimeout(() => {
-        setDialogMessages(prev => prev.map(msg => 
-          msg.isTyping ? { ...msg, isTyping: false } : msg
-        ));
-      }, 500);
-    }
+  // 战斗记录辅助函数
+  const addJudgeMessage = (text: string) => {
+    addCombatLog('system', text);
   };
 
   // 抽牌与爆牌逻辑 - 逐张抽，满手牌烧毁
@@ -1106,6 +1006,10 @@ export default function BattleArena() {
     } else {
       setEnemyState(prev => ({ ...prev, hp: newHp, armor: newArmor }));
     }
+    // 战斗记录
+    const targetName = target === "player" ? "调音师" : "敌人";
+    if (armorConsumed > 0) addCombatLog('armor', `${targetName} 护甲 -${armorConsumed}`, armorConsumed);
+    if (trueDamage > 0) addCombatLog('damage', `${targetName} ${isPiercing ? '穿透' : ''}伤害 -${trueDamage}`, trueDamage);
     
     // 第8步：播放伤害音效（只有玩家受伤时才播放）
     if (amount > 0 && target === "player") {
@@ -1871,9 +1775,9 @@ export default function BattleArena() {
       setHand(cardsToKeep);
       
       // 重置回合
-      setTurn(prev => prev + 1);
+      setTurn(prev => { addCombatLog('turn', `第 ${prev + 1} 回合开始`); return prev + 1; });
       setCurrentIntention(getSimpleEnemyIntention());
-      setPollutionLevel(prev => Math.min(100, prev + 5));
+      setPollutionLevel(prev => { const v = Math.min(100, prev + 5); addCombatLog('pollution', `污染度 ${prev} → ${v}`, v); return v; });
       
       // 回合开始：恢复能量并固定摸牌
       startTurn();
@@ -2310,143 +2214,60 @@ export default function BattleArena() {
         )}
       </AnimatePresence>
 
-      {/* ========== AI裁判对话框 ========== */}
+      {/* ========== 战斗记录对话框 ========== */}
       <AnimatePresence>
-        {showAgentDialog && (
+        {showCombatLog && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm"
-            onClick={() => setShowAgentDialog(false)}
+            onClick={() => setShowCombatLog(false)}
           >
             <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
+              initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-3xl mx-4"
+              className="w-full max-w-2xl mx-4"
             >
               <UICard className="border-sonic-purple/20 bg-abyss-light/95">
                 <div className="flex items-center justify-between p-4 border-b border-white/10">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-sonic-purple rounded-full flex items-center justify-center">
-                      <Sparkles className="w-5 h-5 text-white" />
+                      <BookOpen className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                      <h2 className="font-bold text-lg text-slate-200">
-                        <span className="text-sonic-purple">AI</span> 裁判
-                      </h2>
-                      <p className="text-xs text-muted-foreground">深渊协奏 · AI裁判助手</p>
+                      <h2 className="font-bold text-lg text-slate-200">战斗记录</h2>
+                      <p className="text-xs text-muted-foreground">技能使用 · 属性变化 · 回合记录</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
+                    <Button variant="outline" size="sm"
                       className="text-xs border-white/10 text-muted-foreground hover:text-foreground"
-                      onClick={clearAgentChat}
-                    >
-                      <Trash2 className="h-3 w-3 mr-1" /> 清空对话
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
+                      onClick={() => setCombatLog([])}>清空记录</Button>
+                    <Button variant="outline" size="sm"
                       className="text-xs border-white/10 text-muted-foreground hover:text-foreground"
-                      onClick={() => setShowAgentDialog(false)}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
+                      onClick={() => setShowCombatLog(false)}><X className="h-3 w-3" /></Button>
                   </div>
                 </div>
 
-                {/* 对话区域 */}
                 <CardContent className="p-0">
-                  <div
-                    ref={agentScrollRef}
-                    className="h-[400px] overflow-y-auto p-4 space-y-4"
-                  >
-                    {agentMessages.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center h-full text-center">
-                        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-sonic-purple/10 mb-4">
-                          <Sparkles className="h-8 w-8 text-sonic-purple" />
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          向AI裁判提问规则争议、伤害计算或策略建议
-                        </div>
-                        <div className="text-[10px] text-muted-foreground/50 mt-1">
-                          深渊协奏全规则知识库已加载
-                        </div>
+                  <div ref={combatLogRef} className="h-[400px] overflow-y-auto p-4 space-y-2">
+                    {combatLog.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
+                        <BookOpen className="h-10 w-10 text-sonic-purple/30 mb-3" />
+                        <div className="text-sm">暂无战斗记录</div>
+                        <div className="text-[10px] mt-1">开始战斗后自动记录</div>
                       </div>
                     ) : (
-                      agentMessages.map((msg, i) => (
-                        <div
-                          key={i}
-                          className={cn(
-                            'flex gap-3',
-                            msg.role === 'user' ? 'justify-end' : 'justify-start'
-                          )}
-                        >
-                          {msg.role === 'assistant' && (
-                            <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-sonic-purple/20">
-                              <Sparkles className="h-3.5 w-3.5 text-sonic-purple" />
-                            </div>
-                          )}
-                          <div
-                            className={cn(
-                              'max-w-[80%] rounded-lg px-3 py-2 text-sm leading-relaxed',
-                              msg.role === 'user'
-                                ? 'bg-sonic-purple/20 text-foreground'
-                                : 'bg-abyss/60 border border-white/5 text-muted-foreground'
-                            )}
-                          >
-                            <div className="whitespace-pre-wrap">{msg.content}</div>
-                            {msg.role === 'assistant' && msg.content === '' && isAgentLoading && (
-                              <div className="flex items-center gap-1">
-                                <span className="h-1.5 w-1.5 rounded-full bg-sonic-purple animate-pulse" />
-                                <span className="h-1.5 w-1.5 rounded-full bg-sonic-purple animate-pulse delay-100" />
-                                <span className="h-1.5 w-1.5 rounded-full bg-sonic-purple animate-pulse delay-200" />
-                              </div>
-                            )}
+                      combatLog.map((entry) => {
+                        const iconMap: Record<string, string> = { card:'🎴', damage:'💥', armor:'🛡️', ability:'🔮', sonic:'🔊', pollution:'🌫️', turn:'⏳', system:'📋' };
+                        const colorMap: Record<string, string> = { card:'text-yellow-400', damage:'text-red-400', armor:'text-blue-400', ability:'text-purple-400', sonic:'text-orange-400', pollution:'text-green-400', turn:'text-gray-400', system:'text-slate-400' };
+                        return (
+                          <div key={entry.id} className={cn("flex items-start gap-2 text-sm py-1 border-b border-white/[0.02]", colorMap[entry.type] ?? 'text-slate-400')}>
+                            <span className="flex-shrink-0">{iconMap[entry.type] ?? '•'}</span>
+                            <span>{entry.text}</span>
                           </div>
-                          {msg.role === 'user' && (
-                            <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-white/10">
-                              <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
-                            </div>
-                          )}
-                        </div>
-                      ))
+                        );
+                      })
                     )}
-                  </div>
-
-                  {/* 输入框 */}
-                  <div className="border-t border-white/5 p-3">
-                    <div className="flex items-center gap-2">
-                      <Input
-                        value={agentInput}
-                        onChange={(e) => setAgentInput(e.target.value)}
-                        onKeyDown={handleAgentKeyDown}
-                        placeholder="输入规则问题或战斗场景..."
-                        disabled={isAgentLoading}
-                        className="bg-abyss border-white/10 text-sm placeholder:text-muted-foreground/40"
-                      />
-                      <Button
-                        onClick={() => sendAgentMessage(agentInput)}
-                        disabled={isAgentLoading || !agentInput.trim()}
-                        className="bg-sonic-purple/20 text-sonic-purple hover:bg-sonic-purple/30 border border-sonic-purple/30"
-                        size="sm"
-                      >
-                        <Send className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="flex items-center gap-2 mt-2">
-                      <Badge className="text-[10px] h-5 bg-sonic-purple/10 text-sonic-purple/60 border-sonic-purple/20">
-                        深渊协奏 v1.0 规则库
-                      </Badge>
-                      <Badge className="text-[10px] h-5 bg-white/5 text-muted-foreground/40 border-white/10">
-                        流式响应
-                      </Badge>
-                    </div>
                   </div>
                 </CardContent>
               </UICard>
@@ -2455,38 +2276,34 @@ export default function BattleArena() {
         )}
       </AnimatePresence>
 
-      {/* AI裁判区 - 鼠标悬停展开，点击打开对话框 */}
-      <div 
-        className="fixed left-6 top-24 z-30 group"
-      >
-        {/* 提示图标 - 点击打开对话框 */}
-        <div 
-          className="w-12 h-12 bg-sonic-purple rounded-full flex items-center justify-center mb-2 shadow-lg group-hover:scale-110 transition-transform cursor-pointer"
-          onClick={() => setShowAgentDialog(true)}
-        >
-          <MessageSquare className="w-6 h-6 text-white" />
+      {/* 战斗记录按钮 - 鼠标悬停展开 */}
+      <div className="fixed left-6 top-24 z-30 group">
+        <div onClick={() => setShowCombatLog(true)}
+          className="w-12 h-12 bg-sonic-purple rounded-full flex items-center justify-center mb-2 shadow-lg group-hover:scale-110 transition-transform cursor-pointer">
+          <BookOpen className="w-6 h-6 text-white" />
         </div>
-        
-        {/* 展开面板 */}
         <div className="opacity-0 -translate-x-full group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
           <div className="bg-black/85 backdrop-blur-md p-4 rounded-xl border border-sonic-purple/30 w-72 shadow-2xl">
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-10 h-10 bg-sonic-purple rounded-full flex items-center justify-center">
-                <BookOpen className="w-5 h-5 text-white" />
+              <BookOpen className="w-5 h-5 text-sonic-purple" />
+              <span className="font-bold text-lg text-slate-200">战斗记录</span>
+            </div>
+            <div className="space-y-1.5 max-h-72 overflow-y-auto">
+              {combatLog.length === 0 ? (
+                <div className="text-xs text-muted-foreground text-center py-4">等待战斗开始...</div>
+              ) : (
+                combatLog.slice(0, 8).map((entry) => (
+                  <div key={entry.id} className="text-xs text-slate-400 border-l-2 border-sonic-purple/30 pl-2 py-0.5">
+                    {entry.text}
+                  </div>
+                ))
+              )}
+            </div>
+            {combatLog.length > 8 && (
+              <div className="text-[10px] text-sonic-purple/60 mt-2 cursor-pointer" onClick={() => setShowCombatLog(true)}>
+                查看全部 {combatLog.length} 条记录 →
               </div>
-              <span className="font-bold text-lg text-slate-200">AI 裁判</span>
-            </div>
-            <div className="space-y-2 max-h-80 overflow-y-auto">
-              {[...dialogMessages].reverse().slice(0, 6).map(msg => (
-                <div key={msg.id} className="text-sm text-slate-300 border-l-2 border-sonic-purple/50 pl-2">
-                  {msg.isTyping ? (
-                    <span className="animate-pulse">{msg.text}</span>
-                  ) : (
-                    msg.text
-                  )}
-                </div>
-              ))}
-            </div>
+            )}
           </div>
         </div>
       </div>
