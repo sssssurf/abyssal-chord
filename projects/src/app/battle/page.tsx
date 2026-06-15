@@ -724,23 +724,12 @@ export default function BattleArena() {
   const hasPlayedEndSoundRef = useRef(false);
 
   // ========== 战斗记录面板状态 ==========
-  interface CombatLogEntry {
-    id: number;
-    type: 'card' | 'damage' | 'armor' | 'ability' | 'sonic' | 'pollution' | 'turn' | 'system';
-    text: string;
-    value?: number;
-    timestamp: number;
-  }
-  const [combatLog, setCombatLog] = useState<CombatLogEntry[]>([]);
   const [showCombatLog, setShowCombatLog] = useState(false);
+  const [combatLog, setCombatLog] = useState<string[]>([]);
   const combatLogRef = useRef<HTMLDivElement>(null);
 
-  const addCombatLog = (type: CombatLogEntry['type'], text: string, value?: number) => {
-    const entry: CombatLogEntry = { id: Date.now(), type, text, value, timestamp: Date.now() };
-    setCombatLog(prev => [entry, ...prev].slice(0, 100));
-    setTimeout(() => {
-      combatLogRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-    }, 50);
+  const addCombatLog = (msg: string) => {
+    setCombatLog(prev => [msg, ...prev].slice(0, 200));
   };
 
   // 使用 useRef 来管理 uid 计数器，确保每次组件重新渲染时 uid 都是一致的
@@ -841,7 +830,8 @@ export default function BattleArena() {
   // 敌人动画状态：idle(待机), attack(攻击), defend(防御), buff(强化), hit(受击)
   const [enemyAnimationState, setEnemyAnimationState] = useState<"idle" | "attack" | "defend" | "buff" | "hit">("idle");
   
-  // 战斗记录系统（原AI裁判 → 技能/属性变化记录）
+  // AI裁判消息
+  const [dialogMessages, setDialogMessages] = useState<Array<{ id: number; text: string; isTyping: boolean }>>([]);
   
   // 倒计时状态
   const [timeLeft, setTimeLeft] = useState(30);
@@ -921,8 +911,20 @@ export default function BattleArena() {
   };
 
   // 战斗记录辅助函数
-  const addJudgeMessage = (text: string) => {
-    addCombatLog('system', text);
+  const addJudgeMessage = (text: string, typing: boolean = false) => {
+    addCombatLog(text);
+    setDialogMessages(prev => {
+      const lastMessage = prev[prev.length - 1];
+      if (lastMessage && lastMessage.text === text) return prev;
+      return [...prev, { id: Date.now(), text, isTyping: typing }];
+    });
+    if (typing) {
+      setTimeout(() => {
+        setDialogMessages(prev => prev.map(msg =>
+          msg.isTyping ? { ...msg, isTyping: false } : msg
+        ));
+      }, 500);
+    }
   };
 
   // 抽牌与爆牌逻辑 - 逐张抽，满手牌烧毁
@@ -1006,10 +1008,6 @@ export default function BattleArena() {
     } else {
       setEnemyState(prev => ({ ...prev, hp: newHp, armor: newArmor }));
     }
-    // 战斗记录
-    const targetName = target === "player" ? "调音师" : "敌人";
-    if (armorConsumed > 0) addCombatLog('armor', `${targetName} 护甲 -${armorConsumed}`, armorConsumed);
-    if (trueDamage > 0) addCombatLog('damage', `${targetName} ${isPiercing ? '穿透' : ''}伤害 -${trueDamage}`, trueDamage);
     
     // 第8步：播放伤害音效（只有玩家受伤时才播放）
     if (amount > 0 && target === "player") {
@@ -1775,9 +1773,9 @@ export default function BattleArena() {
       setHand(cardsToKeep);
       
       // 重置回合
-      setTurn(prev => { addCombatLog('turn', `第 ${prev + 1} 回合开始`); return prev + 1; });
+      setTurn(prev => prev + 1);
       setCurrentIntention(getSimpleEnemyIntention());
-      setPollutionLevel(prev => { const v = Math.min(100, prev + 5); addCombatLog('pollution', `污染度 ${prev} → ${v}`, v); return v; });
+      setPollutionLevel(prev => Math.min(100, prev + 5));
       
       // 回合开始：恢复能量并固定摸牌
       startTurn();
@@ -2230,26 +2228,23 @@ export default function BattleArena() {
               <UICard className="border-sonic-purple/20 bg-abyss-light/95">
                 <div className="flex items-center justify-between p-4 border-b border-white/10">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-sonic-purple rounded-full flex items-center justify-center">
+                    <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center">
                       <BookOpen className="w-5 h-5 text-white" />
                     </div>
                     <div>
                       <h2 className="font-bold text-lg text-slate-200">战斗记录</h2>
-                      <p className="text-xs text-muted-foreground">技能使用 · 属性变化 · 回合记录</p>
+                      <p className="text-xs text-muted-foreground">技能使用 · 属性变化 · 回合日志</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm"
-                      className="text-xs border-white/10 text-muted-foreground hover:text-foreground"
-                      onClick={() => setCombatLog([])}>清空记录</Button>
-                    <Button variant="outline" size="sm"
-                      className="text-xs border-white/10 text-muted-foreground hover:text-foreground"
+                    <Button variant="outline" size="sm" className="text-xs border-white/10 text-muted-foreground hover:text-foreground"
+                      onClick={() => setCombatLog([])}>清空</Button>
+                    <Button variant="outline" size="sm" className="text-xs border-white/10 text-muted-foreground hover:text-foreground"
                       onClick={() => setShowCombatLog(false)}><X className="h-3 w-3" /></Button>
                   </div>
                 </div>
-
                 <CardContent className="p-0">
-                  <div ref={combatLogRef} className="h-[400px] overflow-y-auto p-4 space-y-2">
+                  <div ref={combatLogRef} className="h-[400px] overflow-y-auto p-4 space-y-1.5">
                     {combatLog.length === 0 ? (
                       <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
                         <BookOpen className="h-10 w-10 text-sonic-purple/30 mb-3" />
@@ -2257,16 +2252,9 @@ export default function BattleArena() {
                         <div className="text-[10px] mt-1">开始战斗后自动记录</div>
                       </div>
                     ) : (
-                      combatLog.map((entry) => {
-                        const iconMap: Record<string, string> = { card:'🎴', damage:'💥', armor:'🛡️', ability:'🔮', sonic:'🔊', pollution:'🌫️', turn:'⏳', system:'📋' };
-                        const colorMap: Record<string, string> = { card:'text-yellow-400', damage:'text-red-400', armor:'text-blue-400', ability:'text-purple-400', sonic:'text-orange-400', pollution:'text-green-400', turn:'text-gray-400', system:'text-slate-400' };
-                        return (
-                          <div key={entry.id} className={cn("flex items-start gap-2 text-sm py-1 border-b border-white/[0.02]", colorMap[entry.type] ?? 'text-slate-400')}>
-                            <span className="flex-shrink-0">{iconMap[entry.type] ?? '•'}</span>
-                            <span>{entry.text}</span>
-                          </div>
-                        );
-                      })
+                      combatLog.map((msg, i) => (
+                        <div key={i} className="text-xs text-slate-400 border-l-2 border-sonic-purple/20 pl-2 py-0.5">{msg}</div>
+                      ))
                     )}
                   </div>
                 </CardContent>
@@ -2279,29 +2267,27 @@ export default function BattleArena() {
       {/* 战斗记录按钮 - 鼠标悬停展开 */}
       <div className="fixed left-6 top-24 z-30 group">
         <div onClick={() => setShowCombatLog(true)}
-          className="w-12 h-12 bg-sonic-purple rounded-full flex items-center justify-center mb-2 shadow-lg group-hover:scale-110 transition-transform cursor-pointer">
+          className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center mb-2 shadow-lg group-hover:scale-110 transition-transform cursor-pointer">
           <BookOpen className="w-6 h-6 text-white" />
         </div>
         <div className="opacity-0 -translate-x-full group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
           <div className="bg-black/85 backdrop-blur-md p-4 rounded-xl border border-sonic-purple/30 w-72 shadow-2xl">
             <div className="flex items-center gap-2 mb-3">
-              <BookOpen className="w-5 h-5 text-sonic-purple" />
+              <BookOpen className="w-5 h-5 text-purple-400" />
               <span className="font-bold text-lg text-slate-200">战斗记录</span>
             </div>
-            <div className="space-y-1.5 max-h-72 overflow-y-auto">
+            <div className="space-y-1 max-h-72 overflow-y-auto">
               {combatLog.length === 0 ? (
                 <div className="text-xs text-muted-foreground text-center py-4">等待战斗开始...</div>
               ) : (
-                combatLog.slice(0, 8).map((entry) => (
-                  <div key={entry.id} className="text-xs text-slate-400 border-l-2 border-sonic-purple/30 pl-2 py-0.5">
-                    {entry.text}
-                  </div>
+                combatLog.slice(0, 10).map((msg, i) => (
+                  <div key={i} className="text-xs text-slate-400 border-l-2 border-sonic-purple/20 pl-2 py-0.5">{msg}</div>
                 ))
               )}
             </div>
-            {combatLog.length > 8 && (
+            {combatLog.length > 10 && (
               <div className="text-[10px] text-sonic-purple/60 mt-2 cursor-pointer" onClick={() => setShowCombatLog(true)}>
-                查看全部 {combatLog.length} 条记录 →
+                查看全部 {combatLog.length} 条 →
               </div>
             )}
           </div>

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, BookOpen, ScrollText, Sparkles, ChevronRight } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Card, zhongLvCards } from "@/lib/cards";
+import { Card, zhongLvCards, xianYinCards } from "@/lib/cards";
 import { cn } from "@/lib/utils";
 import CardDetailModal from "./CardDetailModal";
 
@@ -147,7 +147,7 @@ export default function SideDrawer({ isOpen, onClose }: SideDrawerProps) {
                             <div className="font-bold text-sonic-purple mb-1">
                               ② 抽牌
                             </div>
-                            <p>抽5张牌。如果抽牌堆用完，将弃牌堆洗入抽牌堆</p>
+                            <p>每回合抽2张牌。如果抽牌堆用完，将弃牌堆洗入抽牌堆</p>
                           </div>
                           <div className="p-3 bg-slate-800/50 rounded-lg">
                             <div className="font-bold text-sonic-purple mb-1">
@@ -277,7 +277,7 @@ export default function SideDrawer({ isOpen, onClose }: SideDrawerProps) {
                             <div className="font-bold text-danger-red mb-1">
                               手牌烧毁
                             </div>
-                            <p>手牌已满（5张）时，新抽到的牌会被直接烧毁移出</p>
+                            <p>手牌已满（6张）时，新抽到的牌会被直接烧毁移出</p>
                           </div>
                           <div className="p-3 bg-slate-800/50 rounded-lg">
                             <div className="font-bold text-yellow-500 mb-1">
@@ -302,7 +302,7 @@ export default function SideDrawer({ isOpen, onClose }: SideDrawerProps) {
 
                       <TabsContent value="cards" className="space-y-4">
                         <h3 className="text-lg font-bold text-slate-100 mb-4">
-                          📚 钟律卡牌库
+                          📚 钟律卡牌库 (20张)
                         </h3>
                         <div className="space-y-2">
                           {aggregateCards(zhongLvCards).map(({ card, count }, index) => (
@@ -314,6 +314,54 @@ export default function SideDrawer({ isOpen, onClose }: SideDrawerProps) {
                               {/* 数量角标 */}
                               {count > 1 && (
                                 <span className="absolute -top-2 -right-2 flex h-6 min-w-6 items-center justify-center rounded-full bg-sonic-purple px-2 text-xs font-bold text-white shadow-lg shadow-purple-500/30 z-10">
+                                  x{count}
+                                </span>
+                              )}
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-3 flex-1">
+                                  <span
+                                    className={cn(
+                                      "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0",
+                                      card.type === "attack"
+                                        ? "bg-danger-red/20 text-danger-red"
+                                        : card.type === "skill"
+                                        ? "bg-armor-blue/20 text-armor-blue"
+                                        : "bg-gold/20 text-gold"
+                                    )}
+                                  >
+                                    {card.cost}
+                                  </span>
+                                  <h4 className="font-bold text-slate-100">
+                                    {card.name}
+                                  </h4>
+                                </div>
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  <span className="text-xs px-2 py-1 rounded bg-slate-700/50 text-slate-300">
+                                    {getCardTypeLabel(card.type)}
+                                  </span>
+                                  <ChevronRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                                </div>
+                              </div>
+                              <div className="text-sm text-slate-400 mb-1">
+                                目标：{getCardTargetLabel(card.target)}
+                              </div>
+                              <p className="text-sm text-slate-300">{card.effect}</p>
+                            </div>
+                          ))}
+                        </div>
+
+                        <h3 className="text-lg font-bold text-slate-100 mt-6 mb-4">
+                          📚 弦音卡牌库 (16张)
+                        </h3>
+                        <div className="space-y-2">
+                          {aggregateCards(xianYinCards).map(({ card, count }, index) => (
+                            <div
+                              key={`xy-${card.id}-${index}`}
+                              onClick={() => setSelectedCard(card)}
+                              className="p-4 bg-slate-800/50 rounded-lg border border-slate-700/50 cursor-pointer hover:bg-purple-900/30 transition-colors relative"
+                            >
+                              {count > 1 && (
+                                <span className="absolute -top-2 -right-2 flex h-6 min-w-6 items-center justify-center rounded-full bg-purple-500 px-2 text-xs font-bold text-white shadow-lg shadow-purple-500/30 z-10">
                                   x{count}
                                 </span>
                               )}
