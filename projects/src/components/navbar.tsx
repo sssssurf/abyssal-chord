@@ -5,15 +5,12 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   Swords,
-  Library,
   Skull,
   Calculator,
-  MessageSquare,
   Home,
   Users,
   Gamepad2,
   BookOpen,
-  Sparkles,
 } from 'lucide-react';
 
 const navItems = [
@@ -23,7 +20,6 @@ const navItems = [
   { href: '/characters', label: '调音师', icon: Users },
   { href: '/enemies', label: '畸变体', icon: Skull },
   { href: '/calculator', label: '计算器', icon: Calculator },
-  { href: '/agent', label: 'AI裁判', icon: Sparkles },
 ];
 
 export function Navbar() {
