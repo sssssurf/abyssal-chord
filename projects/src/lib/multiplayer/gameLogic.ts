@@ -35,7 +35,9 @@ export function createMultiplayerPlayer(id: string, name: string): MultiplayerPl
       armorPerTurn: 0,
       extraCardsPerTurn: 0,
       extraDamagePerArmor: 0,
-      freeSecondAttack: false
+      freeSecondAttack: false,
+      painEchoBonus: 0,
+      maxPainEchoBonus: 8,
     },
     turnState: {
       cardsPlayed: 0,
@@ -135,6 +137,9 @@ export function handlePlayCard(
   // 第一步：从手牌移除卡牌
   player.hand.splice(cardIndex, 1);
   console.log('移除后手牌数量:', player.hand.length);
+
+  // 本回合出牌计数
+  player.turnState.cardsPlayed += 1;
 
   // 第二步：处理卡牌词缀
   if (card.exhaust) {
@@ -242,6 +247,13 @@ export function handlePlayCard(
       // 自伤5点
       player.hp = Math.max(0, player.hp - 5);
       player.turnState.hasTakenSelfDamage = true;
+      // 痛觉回响：自伤→下一张攻击牌+伤害(最多+8)
+      if (player.permanentBonuses.maxPainEchoBonus > 0) {
+        player.permanentBonuses.painEchoBonus = Math.min(
+          player.permanentBonuses.maxPainEchoBonus,
+          player.permanentBonuses.painEchoBonus + 5
+        );
+      }
       break;
 
     // 反馈回路：造成4伤害，若已受自伤则伤害翻倍（8点），并可以免费再打一次
@@ -336,10 +348,11 @@ export function handlePlayCard(
       }
       break;
 
-    // 音纹闪避：4护甲，已出攻击牌额外+3
+    // 音纹闪避：4护甲，本回合已出过其他牌则额外+3
     case 'xy-basic-05':
     case 'xy-basic-06':
-      player.armor += (player.turnState.cardsPlayed > 0 ? 7 : 4);
+      // cardsPlayed already incremented for THIS card, so >1 means another card was played before
+      player.armor += (player.turnState.cardsPlayed > 1 ? 7 : 4);
       break;
 
     // 高频切割：4伤害，有声爆额外+2
@@ -422,10 +435,11 @@ export function handlePlayCard(
       }
       break;
 
-    // 残响追击：6伤害，打3张以上翻倍
+    // 残响追击：6伤害，打出3张以上牌翻倍
     case 'xy-echo-03':
       if (enemy) {
         let dmg = 6 + player.permanentBonuses.damageBonus + player.turnState.nextAttackDamageBonus;
+        // cardsPlayed already counts THIS card, so >=3 means this is the 3rd+ card
         if (player.turnState.cardsPlayed >= 3) { dmg *= 2; }
         if (enemy.armor > 0) {
           if (enemy.armor >= dmg) { enemy.armor -= dmg; dmg = 0; }
@@ -466,9 +480,13 @@ export function handlePlayCard(
             // 低频共振：每5护甲造成3伤害
             player.permanentBonuses.extraDamagePerArmor += 3 / 5;
             break;
+          case 'zl-ability-03':
+            // 痛觉回响：自伤→下一张攻击牌+伤害(最多+8)
+            player.permanentBonuses.maxPainEchoBonus = 8;
+            break;
           case 'zl-ability-04':
-            // 终末定音：+5伤害
-            player.permanentBonuses.damageBonus += 5;
+            // 终末定音：HP<20时+5伤害（多人模式简化：始终+3）
+            player.permanentBonuses.damageBonus += 3;
             break;
         }
       }
@@ -479,10 +497,16 @@ export function handlePlayCard(
       if (card.baseDamage && enemy) {
         // 计算伤害
         let damage = card.baseDamage + player.permanentBonuses.damageBonus;
-        
+
         // 加上断弦极限的下一张攻击牌加成
         damage += player.turnState.nextAttackDamageBonus;
-        
+
+        // 痛觉回响累加伤害（最多+8），攻击后清零
+        if (card.type === 'attack' && player.permanentBonuses.painEchoBonus > 0) {
+          damage += player.permanentBonuses.painEchoBonus;
+          player.permanentBonuses.painEchoBonus = 0;
+        }
+
         // 额外伤害（基于护甲）
         if (player.permanentBonuses.extraDamagePerArmor > 0) {
           damage += Math.floor(player.armor * player.permanentBonuses.extraDamagePerArmor);

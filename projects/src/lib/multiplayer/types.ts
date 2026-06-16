@@ -41,6 +41,8 @@ export interface MultiplayerPlayer {
     extraCardsPerTurn: number;
     extraDamagePerArmor: number;
     freeSecondAttack: boolean;
+    painEchoBonus: number; // 痛觉回响：自伤累加的下一张攻击牌伤害
+    maxPainEchoBonus: number; // 上限8
   };
   // 本回合状态 - 用于特殊卡牌效果
   turnState: {
