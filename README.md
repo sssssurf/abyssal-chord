@@ -7,7 +7,7 @@
 ## 项目结构
 
 ```
-├── abyssal_chord/   # MoonBit 核心引擎（~5,300 行，30 个模块）
+├── engine/   # MoonBit 核心引擎（~5,300 行，30 个模块）
 │   ├── types.mbt           # 核心类型定义
 │   ├── battle_effect.mbt   # 卡牌效果引擎
 │   ├── battle_state.mbt    # 战斗状态管理
@@ -15,7 +15,7 @@
 │   ├── card_data.mbt       # 卡牌数据
 │   └── ...                 # 全部 30 个 .mbt 源文件
 │
-├── projects/        # Next.js 可视化前端
+├── web/        # Next.js 可视化前端
 │   └── src/
 │       ├── app/            # 页面路由（battle/lobby/multiplayer/cards）
 │       ├── lib/            # 游戏逻辑
@@ -29,7 +29,7 @@
 
 ### MoonBit 引擎
 ```bash
-cd abyssal_chord
+cd engine
 moon build              # 编译（0 errors）
 moon test               # 运行测试（108 passed）
 moon run cmd/main       # CLI 对战演示
@@ -37,7 +37,7 @@ moon run cmd/main       # CLI 对战演示
 
 ### Web 前端
 ```bash
-cd projects
+cd web
 pnpm install
 pnpm dev                # 启动 http://localhost:5000
 ```

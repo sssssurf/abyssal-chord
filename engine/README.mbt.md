@@ -72,7 +72,7 @@
 ### 核心引擎 (MoonBit 5,266行)
 
 ```
-abyssal_chord/
+engine/
 ├── types.mbt              # 核心类型定义 (193行)
 ├── battle_effect.mbt      # 卡牌效果解析引擎 (255行)
 ├── battle_state.mbt       # 战斗状态管理 (124行)
@@ -101,7 +101,7 @@ abyssal_chord/
 ├── enemy_data.mbt         # 敌人数据 (70行)
 ├── more_enemies.mbt       # 扩展敌人 (130行)
 ├── pollution.mbt          # 污染度系统 (41行)
-├── abyssal_chord_test.mbt # 自动化测试 (698行)
+├── engine_test.mbt # 自动化测试 (698行)
 └── cmd/main/main.mbt      # CLI演示入口 (93行)
 ```
 
@@ -122,7 +122,7 @@ abyssal_chord/
 ### 构建与运行
 ```bash
 # MoonBit 引擎编译
-cd abyssal_chord
+cd engine
 moon build              # 编译（0 errors）
 moon test               # 运行测试（108/108 passed）
 moon run cmd/main       # CLI 对战演示

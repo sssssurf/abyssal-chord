@@ -4,18 +4,18 @@ moon.mod linguist-language=MoonBit
 moon.pkg linguist-language=MoonBit
 
 # Shadcn auto-generated UI (6000+ lines — not our code)
-projects/src/components/ui/** linguist-generated=true
+web/src/components/ui/** linguist-generated=true
 
 # Next.js generated boilerplate
-projects/next-env.d.ts linguist-generated=true
-projects/components.json linguist-generated=true
+web/next-env.d.ts linguist-generated=true
+web/components.json linguist-generated=true
 
 # Build/config files (not source code)
-projects/scripts/** linguist-documentation
-projects/postcss.config.mjs linguist-documentation
-projects/eslint.config.mjs linguist-documentation
-projects/.babelrc linguist-documentation
-projects/.coze linguist-documentation
-projects/.npmrc linguist-documentation
-projects/AGENTS.md linguist-documentation
-projects/DESIGN.md linguist-documentation
+web/scripts/** linguist-documentation
+web/postcss.config.mjs linguist-documentation
+web/eslint.config.mjs linguist-documentation
+web/.babelrc linguist-documentation
+web/.coze linguist-documentation
+web/.npmrc linguist-documentation
+web/AGENTS.md linguist-documentation
+web/DESIGN.md linguist-documentation
