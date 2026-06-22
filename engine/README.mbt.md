@@ -1,206 +1,195 @@
-# 深渊协奏 (Abyssal Chord) — MoonBit 卡牌对战游戏引擎
+# 深渊协奏 (Abyssal Chord)
 
-## 📋 项目申报信息
+MoonBit 回合制卡牌对战游戏引擎，已发布到 [mooncakes.io](https://mooncakes.io/packages/sssssurf/abyssal_chord)。
+
+## 项目信息
 
 | 项目 | 详情 |
 |------|------|
-| **项目名称** | 深渊协奏 (Abyssal Chord) — MoonBit 卡牌对战游戏引擎 |
-| **项目方向** | 游戏引擎 / 卡牌策略游戏 |
-| **适用场景** | 单机卡牌对战、局域网多人对战、AI 难度挑战、生存模式 |
-| **实现语言** | MoonBit（主要）+ TypeScript（前端可视化） |
+| **项目名称** | 深渊协奏 (Abyssal Chord) |
+| **方向** | 游戏引擎 / 卡牌策略 |
+| **实现语言** | MoonBit（核心引擎）+ TypeScript（Web 可视化前端） |
+| **许可证** | Apache-2.0 |
+| **原创性** | 原创项目，卡牌体系与机制均为自主设计 |
 | **GitHub** | https://github.com/sssssurf/abyssal-chord |
 | **Gitlink** | https://gitlink.org.cn/surf3/abyssal-chord |
-| **许可证** | Apache-2.0 |
-| **原创性** | 原创项目，卡牌体系与游戏机制为自主设计 |
 
 ---
 
-## 🎯 项目简介
-
-深渊协奏是一款基于 MoonBit 语言开发的回合制卡牌对战游戏引擎。玩家扮演"调音师"，利用声波武器、护甲系统和永久能力与畸变体战斗。项目核心引擎完全使用 MoonBit 实现，同时提供 Next.js + React 的 Web 可视化前端，支持单人对战、局域网联机对战、生存模式和 Boss Rush 等多种玩法。
-
-### 为什么值得做？
-
-1. **MoonBit 游戏开发生态空白** — 目前 MoonBit 生态中缺乏完整的游戏引擎参考实现，本项目可以作为 MoonBit 游戏开发的参考案例
-2. **卡牌策略的复杂逻辑验证** — 36张卡牌、4种流派、11种状态效果的组合逻辑，充分验证 MoonBit 在复杂业务逻辑中的表现力
-3. **完整的工程实践** — 从类型系统设计、状态管理、AI 系统到测试覆盖，展示了 MoonBit 工程最佳实践
-
----
-
-## 🎮 核心功能
-
-### 卡牌系统（55张卡牌）
-- **钟律牌库**（20张）：低频堡垒流、过载冲击流
-- **弦音牌库**（16张）：高频刺客流、回声幻影流
-- **扩展卡牌**（15张）：通用卡牌补充
-- **中立卡牌**（4张）：通用效果
-
-### 战斗引擎
-- HP/护甲/AP 资源管理系统
-- 5级污染度系统（影响全局战斗参数）
-- 声爆 Debuff 叠加与引爆机制
-- 永久能力牌（打出后整场生效）
-- 遗物系统（4个角色专属遗物）
-- 阵型系统（5种战术阵型）
-
-### 敌人 AI
-- 7种敌人（含2个Boss，支持二阶段转换）
-- 骰子驱动的行动选择算法
-- 4级 AI 难度（简单/普通/困难/噩梦）
-
-### 游戏模式
-- 快速对战（10种预设对局）
-- 生存模式（无尽波次+难度递增）
-- Boss Rush（连续挑战双Boss）
-- 训练模式（流派专项练习）
-- 本地联机对战（WebSocket 多人同步）
-
-### 辅助系统
-- 108个自动化测试（全部通过）
-- AI vs AI 战斗模拟器（平衡性测试）
-- 战斗回放系统（录制与回放）
-- 卡牌数据库查询系统
-- 自定义套牌构建器
-- 每日挑战系统
-- 40项成就系统
-- JSON 序列化（战斗状态导入/导出）
-
----
-
-## 🏗️ 技术架构
-
-### 核心引擎 (MoonBit 5,266行)
-
-```
-engine/
-├── types.mbt              # 核心类型定义 (193行)
-├── battle_effect.mbt      # 卡牌效果解析引擎 (255行)
-├── battle_state.mbt       # 战斗状态管理 (124行)
-├── enemy_ai.mbt           # 敌人AI系统 (96行)
-├── ai_levels.mbt          # AI难度等级 (179行)
-├── xian_yin_engine.mbt    # 弦音专属引擎 (202行)
-├── relic_engine.mbt       # 遗物系统 (104行)
-├── battle_formation.mbt   # 阵型系统 (133行)
-├── survival_mode.mbt      # 生存模式 (159行)
-├── multiplayer_engine.mbt # 多人对战引擎 (379行)
-├── achievements.mbt       # 成就系统 (194行)
-├── daily_challenge.mbt    # 每日挑战 (重建中)
-├── card_database.mbt      # 卡牌数据库 (247行)
-├── deck_builder.mbt       # 套牌构建器 (200行)
-├── card_synergy.mbt       # 卡牌协同系统 (199行)
-├── balance_calc.mbt       # 平衡性计算器 (249行)
-├── battle_replay.mbt      # 战斗回放 (184行)
-├── battle_simulator.mbt   # 战斗模拟器 (140行)
-├── json_io.mbt            # JSON序列化 (171行)
-├── game_guide.mbt         # 游戏攻略手册 (221行)
-├── interactive_cli.mbt    # 交互CLI (331行)
-├── card_data.mbt          # 卡牌数据 (38行)
-├── more_cards.mbt         # 扩展卡牌 (56行)
-├── card_rebalance.mbt     # 卡牌平衡分析 (149行)
-├── character_data.mbt     # 角色数据 (28行)
-├── enemy_data.mbt         # 敌人数据 (70行)
-├── more_enemies.mbt       # 扩展敌人 (130行)
-├── pollution.mbt          # 污染度系统 (41行)
-├── engine_test.mbt # 自动化测试 (698行)
-└── cmd/main/main.mbt      # CLI演示入口 (93行)
-```
-
-### 前端展示 (TypeScript/Next.js)
-- React + Framer Motion 动画
-- WebSocket 多人实时对战
-- 音效系统（战斗音效+BGM）
-- 污染度可视化、战斗记录面板
-
----
-
-## 🚀 快速开始
+## 安装与使用
 
 ### 环境要求
 - MoonBit 工具链（最新版）
-- pnpm（前端依赖管理）
+- pnpm（前端依赖管理，可选）
 
-### 构建与运行
+### 安装
+
 ```bash
-# MoonBit 引擎编译
+# 从 mooncakes.io 安装
+moon add sssssurf/abyssal_chord
+
+# 或克隆仓库
+git clone https://github.com/sssssurf/abyssal-chord.git
+```
+
+### 编译与运行
+
+```bash
+# 编译引擎
 cd engine
-moon build              # 编译（0 errors）
-moon test               # 运行测试（108/108 passed）
+moon build              # 0 errors
+moon test               # 运行 88 个测试（全部通过）
 moon run cmd/main       # CLI 对战演示
 
-# Web 前端运行
-cd ../projects
+# Web 前端（可选）
+cd ../web
 pnpm install
 pnpm dev                # 启动 http://localhost:5000
 ```
 
-### 可用路由
+### 可运行示例
+
+CLI 演示 `moon run cmd/main` 启动一场钟律 vs 嘶鸣游荡者的自动对战。
+
+Web 前端支持的路由：
 - `/` — 主菜单
 - `/battle` — 单人突围
 - `/lobby` → `/multiplayer` — 局域网联机
 - `/cards` — 卡牌图鉴
-- `/characters` — 角色资料
 
 ---
 
-## 📊 项目统计
+## 项目简介
 
-| 指标 | 数值 |
-|------|------|
-| MoonBit 源文件 | 30个 |
-| MoonBit 代码行数 | 5,266 行 |
-| TypeScript 代码行数 | ~4,000 行（手写逻辑） |
-| 总卡牌数 | 55 张 |
-| 角色数 | 2 个 |
-| 敌人数 | 7 个（含2 Boss） |
-| 游戏模式 | 6 种 |
-| AI 难度等级 | 4 级 |
-| 自动化测试 | 108 个（全部通过） |
-| CI/CD | GitHub Actions |
+深渊协奏是一款回合制卡牌对战游戏引擎。玩家扮演"调音师"，利用声波武器、护甲系统和永久能力与畸变体战斗。
+
+项目包含 29 个 MoonBit 源文件（5,215 行），覆盖卡牌战斗、敌人 AI、状态管理、多人对战等完整游戏系统。前端使用 Next.js + React 提供可视化界面，支持单机对战与局域网联机。
+
+### 为什么选择 MoonBit？
+
+MoonBit 的类型系统、模式匹配和代数数据类型非常适合表达复杂的卡牌游戏逻辑。项目展示了 MoonBit 在实际工程中的表现力——36 张卡牌、4 种流派、7 种敌人的完整交互，编译为 0 错误、88 个测试全部通过。
+
+### 关于前端技术选型
+
+当前前端使用 TypeScript（Next.js + React + Framer Motion）提供动画和交互体验。MoonBit 生态中已有成熟的 Web UI 框架（如 [Rabbita](https://github.com/moonbit-community/rabbita)、[Respo](https://github.com/Respo/respo.mbt)、[Luna](https://github.com/luna-ui/luna)），后续可以考虑将前端迁移到 MoonBit。
 
 ---
 
-## 🎲 游戏机制说明
+## 核心功能
+
+### 卡牌系统（36 张卡牌）
+- **钟律牌库**（20 张）：低频堡垒流、过载冲击流
+- **弦音牌库**（16 张）：高频刺客流、回声幻影流
+
+### 战斗引擎
+- HP / 护甲 / AP 资源管理
+- 5 级污染度系统（全局战斗参数动态调整）
+- 声爆 Debuff 叠加与引爆
+- 11 种状态效果（易伤、虚弱、中毒、力量、荆棘、声爆等）
+- 永久能力牌（6 种：频率锚定、低频共振、痛觉回响、终末定音、回声标记、全频共振）
+- 遗物系统（4 个角色专属遗物）
+- 阵型系统（5 种战术阵型）
+
+### 敌人 AI
+- 7 种敌人（含 2 个 Boss，支持二阶段形态转换）
+- 骰子驱动的行动选择算法
+- 4 级难度（简单 / 普通 / 困难 / 噩梦）
+
+### 游戏模式
+- 快速对战（10 种预设对局）
+- 生存模式（无尽波次 + 难度递增）
+- Boss Rush（连续挑战 Boss）
+- 训练模式（流派专项练习）
+- 局域网多人对战（WebSocket 实时同步）
+
+### 辅助系统
+- 卡牌数据库查询（按类型/费用/目标/关键词过滤）
+- 自定义套牌构建器
+- AI vs AI 战斗模拟器（平衡性测试）
+- 战斗回放系统
+- 卡牌协同分析（16 种 Combo）
+- 平衡性计算器
+- JSON 序列化
+
+---
+
+## 项目结构
+
+```
+abyssal-chord/
+├── engine/                    # MoonBit 核心引擎
+│   ├── types.mbt              # 核心类型
+│   ├── battle_effect.mbt      # 卡牌效果引擎
+│   ├── battle_state.mbt       # 战斗状态管理
+│   ├── enemy_ai.mbt           # 敌人 AI
+│   ├── card_data.mbt          # 卡牌数据
+│   ├── character_data.mbt     # 角色数据
+│   ├── enemy_data.mbt         # 敌人数据
+│   ├── pollution.mbt          # 污染度系统
+│   ├── abyssal_chord_test.mbt # 88 个自动化测试
+│   ├── cmd/main/main.mbt      # CLI 演示入口
+│   ├── .github/workflows/     # CI/CD 配置
+│   └── moon.mod               # 包配置
+│
+├── web/                       # Web 可视化前端
+│   ├── src/app/battle/        # 单人突围页面
+│   ├── src/app/lobby/         # 联机大厅
+│   ├── src/app/multiplayer/   # 多人对战
+│   ├── src/lib/               # TypeScript 游戏逻辑
+│   └── src/components/        # UI 组件
+│
+├── LICENSE                    # Apache 2.0
+├── README.md
+├── .gitattributes
+└── .gitignore
+```
+
+---
+
+## 游戏机制
 
 ### 污染度系统
-| 等级 | 范围 | 效果 |
-|------|------|------|
-| 寂静期 | 0-15 | 无额外效果 |
-| 低鸣期 | 16-40 | 敌人伤害+2 |
-| 共振期 | 41-70 | 敌人伤害+4，每回合+3护甲 |
-| 咆哮期 | 71-90 | 敌人伤害+6，每回合+5护甲，玩家穿透-3 |
-| 终焉和弦 | 91-100 | 敌人伤害+10，玩家穿透-5 |
+
+| 等级 | 范围 | 敌人伤害加成 | 其他效果 |
+|------|------|:----------:|------|
+| 寂静期 | 0-15 | 0 | — |
+| 低鸣期 | 16-40 | +2 | — |
+| 共振期 | 41-70 | +4 | 敌人每回合 +3 护甲 |
+| 咆哮期 | 71-90 | +6 | 敌人每回合 +5 护甲，玩家穿透 -3 |
+| 终焉和弦 | 91-100 | +10 | 玩家穿透 -5，污染 100 即失败 |
 
 ### 流派体系
-| 流派 | 角色 | 特点 |
+
+| 流派 | 角色 | 核心策略 |
 |------|------|------|
-| 低频堡垒 | 钟律 | 叠甲→转化伤害，以守为攻 |
+| 低频堡垒 | 钟律 | 叠甲 → 护甲溢出转伤害，以守为攻 |
 | 过载冲击 | 钟律 | 自伤换超高爆发，血线换杀线 |
 | 高频刺客 | 弦音 | 高频率低费攻击，声爆快速叠加 |
 | 回声幻影 | 弦音 | 牌效翻倍，资源效率极致 |
 
-### 卡牌数值平衡
-- 基准：1AP = 5伤害 = 5护甲
-- 超模设计通过副作用平衡（自伤、污染代价、消耗）
-- 能力牌按投资回收期评估（1-3回合回本）
+### 数值平衡
+
+- **基准**：1AP = 5 伤害 = 5 护甲
+- 超模设计通过副作用平衡（自伤 / 污染代价 / 消耗）
+- 能力牌按投资回收期评估（1-3 回合回本）
 
 ---
 
-## 🔧 开发历程
+## 工程质量
 
-本项目使用 AI 工具（Claude Code）辅助开发，AI 负责：
-- 代码生成与调试
-- 卡牌平衡性分析
-- 测试用例编写
-- 文档生成
+| 指标 | 数值 |
+|------|------|
+| MoonBit 源文件 | 29 个 |
+| MoonBit 代码行数 | 5,215 行 |
+| 自动化测试 | 88 个（全部通过） |
+| CI/CD | GitHub Actions（moon check + fmt + build + test） |
+| 包管理 | mooncakes.io（sssssurf/abyssal_chord） |
+| 许可证 | Apache-2.0 |
 
-人类开发者负责：
-- 游戏机制与数值设计
-- 架构决策与代码审查
-- UI/UX 设计与实现
-- 最终质量把控
+## 开发历程
 
----
+本项目在 Claude Code 协助下开发，AI 工具负责代码生成、Bug 修复、测试用例编写和卡牌平衡性分析。人类开发者负责游戏机制设计、架构决策和 UI/UX 实现。
 
-## 📄 许可证
+## 许可证
 
-Apache-2.0 License
+Apache-2.0 License — 详见 [LICENSE](../LICENSE)
