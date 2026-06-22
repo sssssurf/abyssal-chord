@@ -16,8 +16,10 @@ jobs:
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
           echo "$HOME/.moon/bin" >> $GITHUB_PATH
       - name: MoonBit Check
-        run: moon check
+        run: cd engine && moon check
+      - name: MoonBit Format Check
+        run: cd engine && moon fmt --check
       - name: MoonBit Build
-        run: moon build
+        run: cd engine && moon build
       - name: MoonBit Test
-        run: moon test
+        run: cd engine && moon test
